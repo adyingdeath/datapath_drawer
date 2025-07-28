@@ -97,7 +97,7 @@ export class DataPathElement extends Shape {
      */
     private _calculateRenderData() {
         // --- 1. Define Spacing and Padding ---
-        const minPortSpacingPx = 3 * this.fontSize;
+        const minPortSpacingPx = 2.5 * this.fontSize;
         // Ensure spacing is a multiple of the grid size.
         const portSpacingPx = Math.ceil(minPortSpacingPx / this.gridSize) * this.gridSize;
         const textPadding = this.fontSize * 0.75;
@@ -180,7 +180,7 @@ export class DataPathElement extends Shape {
                     height={rectHeightPx}
                     fill={this.fillColor}
                     stroke={this.color}
-                    strokeWidth="2"
+                    strokeWidth="1"
                 />
 
                 {/* Center Title (Internal) */}
@@ -226,7 +226,7 @@ export class DataPathElement extends Shape {
     /**
      * Finds the absolute coordinates of a connection point for a given port ID.
      */
-    public getPortConnectionPoint(portId: string): { x: number; y: number } | null {
+    public getPortConnectionPoint(portId: string): { x: number; y: number } {
         // Use the pre-calculated renderData.
         const {
             px, py, 
@@ -238,15 +238,15 @@ export class DataPathElement extends Shape {
         const leftIndex = this.ports.left.findIndex(p => p.id === portId);
         if (leftIndex !== -1) {
             const portY = leftPortsStartY + leftIndex * portSpacingPx;
-            return { x: px, y: py + rectYOffset + portY };
+            return { x: px, y: py + rectYOffset + portY - 1 };
         }
 
         const rightIndex = this.ports.right.findIndex(p => p.id === portId);
         if (rightIndex !== -1) {
             const portY = rightPortsStartY + rightIndex * portSpacingPx;
-            return { x: px + rectWidthPx, y: py + rectYOffset + portY };
+            return { x: px + rectWidthPx, y: py + rectYOffset + portY - 1 };
         }
         
-        return null; // Port not found
+        return { x: 0, y: 0 }; // Port not found
     }
 }

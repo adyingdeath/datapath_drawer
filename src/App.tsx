@@ -1,5 +1,6 @@
 import Board from './Board'
 import { DataPathElement, type Port } from './shape/DataPathElement'
+import { Polyline } from './shape/Polyline';
 import { Rectangle } from './shape/Rectagle'
 
 function App() {
@@ -8,12 +9,10 @@ function App() {
     x: 4,
     y: 3,
     id: 'reg-file',
-    color: '#1971c2',
-    fillColor: '#e7f5ff',
+    color: '#000',
+    fillColor: '#fff',
     fontSize: 12,
     topTitle: "Register File",
-    centerTitle: "32 x 32-bit",
-    bottomTitle: "Combinational Read",
     ports: {
       left: [
         { id: 'rs1_addr', title: 'Read Addr 1' },
@@ -29,6 +28,32 @@ function App() {
     },
   });
 
+  const line2 = new Polyline({
+    id: 'data-bus-1',
+    x: 0,
+    y: 0,
+    gridSize: 1,
+    points: [
+      {
+        x: datapath.getPortConnectionPoint("rs1_addr").x,
+        y: datapath.getPortConnectionPoint("rs1_addr").y,
+      },
+      { x: datapath.getPortConnectionPoint("rs1_addr").x - 50, y: datapath.getPortConnectionPoint("rs1_addr").y },
+      { x: datapath.getPortConnectionPoint("rs2_addr").x - 50, y: datapath.getPortConnectionPoint("rs2_addr").y },
+      {
+        x: datapath.getPortConnectionPoint("rs2_addr").x,
+        y: datapath.getPortConnectionPoint("rs2_addr").y,
+      }
+    ],
+    color: '#000', // Fuchsia color
+    style: 'solid',
+    startArrow: true,
+    endArrow: true,
+    startBitWidth: 32,
+    endBitWidth: 16,
+    strokeWidth: 1
+  });
+
   return (
     <div className="w-full h-dvh flex">
       <div className="w-72">
@@ -38,21 +63,46 @@ function App() {
         <Board width={4000} height={3000}>
           {datapath.toSvgElement()}
           {<rect
-            x={datapath.getPortConnectionPoint("rs1_addr")?.x}
-            y={datapath.getPortConnectionPoint("rs1_addr")?.y}
-            width={3}
-            height={3}
+            x={datapath.getPortConnectionPoint("rs1_addr").x - 1}
+            y={datapath.getPortConnectionPoint("rs1_addr").y - 1}
+            width={2}
+            height={2}
             fill="#FF0000"
             stroke="#FF0000"
           />}
           {<rect
-            x={datapath.getPortConnectionPoint("rs2_addr")?.x}
-            y={datapath.getPortConnectionPoint("rs2_addr")?.y}
-            width={3}
-            height={3}
+            x={datapath.getPortConnectionPoint("rs2_addr").x - 1}
+            y={datapath.getPortConnectionPoint("rs2_addr").y - 1}
+            width={2}
+            height={2}
             fill="#FF0000"
             stroke="#FF0000"
           />}
+          {<rect
+            x={datapath.getPortConnectionPoint("rd_addr").x - 1}
+            y={datapath.getPortConnectionPoint("rd_addr").y - 1}
+            width={2}
+            height={2}
+            fill="#FF0000"
+            stroke="#FF0000"
+          />}
+          {<rect
+            x={datapath.getPortConnectionPoint("rd_data").x - 1}
+            y={datapath.getPortConnectionPoint("rd_data").y - 1}
+            width={2}
+            height={2}
+            fill="#FF0000"
+            stroke="#FF0000"
+          />}
+          {<rect
+            x={datapath.getPortConnectionPoint("rs1_data").x - 1}
+            y={datapath.getPortConnectionPoint("rs1_data").y - 1}
+            width={2}
+            height={2}
+            fill="#FF0000"
+            stroke="#FF0000"
+          />}
+          {line2.toSvgElement()}
         </Board>
       </div>
     </div>
