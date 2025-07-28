@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shape, type ShapeOptions } from './Shape'; // Assuming Shape.tsx is in the same directory
+import { Shape, type Grid, type ShapeOptions } from './Shape'; // Assuming Shape.tsx is in the same directory
 
 // --- Interfaces ---
 
@@ -150,6 +150,44 @@ export class DataPathElement extends Shape {
             textPadding, externalTitleMargin, portSpacingPx,
             leftPortsStartY, rightPortsStartY
         };
+    }
+
+    /**
+     * Calculates the total bounding box of the element in grid units.
+     * This includes the main rectangle and any external titles.
+     * This method is required by the abstract Shape class.
+     */
+    public calculateOccupiedArea(): Grid[] {
+        // Use pre-calculated data for dimensions.
+        const {
+            rectWidthPx,
+            rectHeightPx,
+            rectYOffset,
+            externalTitleMargin,
+        } = this.renderData;
+
+        // The total width is simply the width of the main rectangle.
+        const totalWidthPx = rectWidthPx;
+
+        // The total height is the sum of the top title's offset, the rectangle's height,
+        // and the space for the bottom title if it exists.
+        let totalHeightPx = rectYOffset + rectHeightPx;
+        if (this.bottomTitle) {
+            totalHeightPx += externalTitleMargin + this.fontSize;
+        }
+
+        // Convert the final pixel dimensions to grid units, rounding up.
+        const occupiedWidthInGrid = Math.ceil(totalWidthPx / this.gridSize);
+        const occupiedHeightInGrid = Math.ceil(totalHeightPx / this.gridSize);
+
+        // The entire element occupies a single rectangular area starting at its (x,y)
+        // with the calculated width (dx) and height (dy) in grid units.
+        return [{
+            x: this.x,
+            y: this.y,
+            dx: occupiedWidthInGrid,
+            dy: occupiedHeightInGrid,
+        }];
     }
 
     /**

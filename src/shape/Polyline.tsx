@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shape, type ShapeOptions } from './Shape';
+import { Shape, type ShapeOptions, type Grid } from './Shape';
 
 export interface Point {
     x: number;
@@ -45,6 +45,60 @@ export class Polyline extends Shape {
         this.fontSize = options.fontSize ?? 10;
     }
     
+    /**
+     * Calculates all grid cells occupied by the polyline's path.
+     * This uses a line-drawing algorithm to find every grid cell the line passes through.
+     * @returns An array of Grid objects representing the occupied cells.
+     */
+    public calculateOccupiedArea(): Grid[] {
+        // This method might be called by the super constructor before `this.points` is set.
+        if (!this.points || this.points.length < 2) {
+            return [];
+        }
+        
+        const occupiedCells = new Set<string>();
+
+        // Iterate over each segment of the polyline
+        for (let i = 0; i < this.points.length - 1; i++) {
+            const p1 = this.points[i];
+            const p2 = this.points[i + 1];
+
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+
+            // Determine the number of steps needed to traverse the line,
+            // ensuring we don't skip any grid cells.
+            const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / this.gridSize) * 2;
+            
+            if (steps === 0) {
+                const gridX = Math.floor(p1.x / this.gridSize);
+                const gridY = Math.floor(p1.y / this.gridSize);
+                occupiedCells.add(`${gridX},${gridY}`);
+                continue;
+            }
+
+            const xIncrement = dx / steps;
+            const yIncrement = dy / steps;
+            
+            // "Walk" along the line segment, adding each grid cell we touch to the set.
+            for (let j = 0; j <= steps; j++) {
+                const currentX = p1.x + j * xIncrement;
+                const currentY = p1.y + j * yIncrement;
+                
+                const gridX = Math.floor(currentX / this.gridSize);
+                const gridY = Math.floor(currentY / this.gridSize);
+                
+                occupiedCells.add(`${gridX},${gridY}`);
+            }
+        }
+        
+        // Convert the set of unique "x,y" strings back to Grid objects.
+        return Array.from(occupiedCells, cell => {
+            const [x, y] = cell.split(',').map(Number);
+            return { x, y };
+        });
+    }
+
     /**
      * Renders the bit width annotation (a 45-degree slash with a number) on a line segment.
      * @param p1 The starting point of the segment.

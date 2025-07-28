@@ -1,7 +1,6 @@
 import Board from './Board'
-import { DataPathElement, type Port } from './shape/DataPathElement'
+import { DataPathElement } from './shape/DataPathElement'
 import { Polyline } from './shape/Polyline';
-import { Rectangle } from './shape/Rectagle'
 
 function App() {
   const datapath = new DataPathElement({

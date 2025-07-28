@@ -1,5 +1,12 @@
 import React from 'react';
 
+export interface Grid {
+    x: number;
+    y: number;
+    dx?: number;
+    dy?: number;
+}
+
 /**
  * Defines the options required for constructing a Shape.
  */
@@ -45,6 +52,8 @@ export abstract class Shape {
 
     public readonly gridSize: number;
 
+    public readonly occupiedArea: Grid[];
+
     /**
      * @param options The initialization options for the shape.
      */
@@ -60,6 +69,8 @@ export abstract class Shape {
 
         // Set the ID, generating a random one if not provided.
         this.id = options.id ?? `shape-${crypto.randomUUID()}`;
+
+        this.occupiedArea = this.calculateOccupiedArea();
     }
 
     /**
@@ -70,11 +81,54 @@ export abstract class Shape {
     public abstract toSvgElement(): React.ReactElement;
 
     /**
+     * Calculates and returns all grid positions occupied by this shape.
+     * 
+     * Each returned Grid represents either:
+     * - A single occupied cell (when dx/dy are undefined), or
+     * - A rectangular area of occupied cells (when dx/dy are present)
+     * 
+     * Note: (x,y) always represents the top-left corner of the occupied area.
+     */
+    public abstract calculateOccupiedArea(): Grid[];
+
+    /**
      * A helper method to convert grid units to pixel values.
      * @param gridUnit The value in grid units (e.g., this.x or a width).
      * @returns The corresponding value in pixels.
      */
     protected toPixel(gridUnit: number): number {
         return gridUnit * this.gridSize;
+    }
+
+    /**
+     * Checks if the specified coordinate is occupied by this shape.
+     * @param x The x-coordinate to check
+     * @param y The y-coordinate to check
+     * @returns true if the coordinate is within any of the occupied areas
+     */
+    protected isOccupied(x: number, y: number): boolean {
+        if (!this.occupiedArea) {
+            return false;
+        }
+
+        for (const grid of this.occupiedArea) {
+            // Check if it's a single cell (no dx/dy)
+            if (grid.dx === undefined || grid.dy === undefined) {
+                if (grid.x === x && grid.y === y) {
+                    return true;
+                }
+            }
+            // Check if it's within a rectangular area
+            else {
+                if (x >= grid.x &&
+                    x < grid.x + grid.dx &&
+                    y >= grid.y &&
+                    y < grid.y + grid.dy) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
