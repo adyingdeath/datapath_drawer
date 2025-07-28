@@ -53,7 +53,7 @@ function Board({ width, height }: BoardProps) {
 			<svg
 				width={width}
 				height={height}
-				style={{ border: '1px solid #ccc', backgroundColor: '#f9f9f9' }}
+				style={{ backgroundColor: '#f9f9f9' }}
 			>
 				{/*
           The SVG <rect> element is used to draw rectangles and squares.
