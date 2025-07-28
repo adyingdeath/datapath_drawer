@@ -19,6 +19,7 @@ interface SquareData {
 interface BoardProps {
 	width: number;
 	height: number;
+	children: React.ReactNode;
 }
 
 /**
@@ -26,28 +27,7 @@ interface BoardProps {
  * It is declared using the 'function' syntax.
  * @param {BoardProps} props - The component's props, including width and height for the SVG.
  */
-function Board({ width, height }: BoardProps) {
-
-	// --- Core Logic: Generate the square's data programmatically here ---
-	// In a real application, this data could come from an API call,
-	// user input, or state management.
-	const square: SquareData = {
-		id: 'unique-square-1',
-		x: 50,
-		y: 50,
-		size: 100,
-		fill: 'deepskyblue',
-		stroke: 'steelblue',
-		strokeWidth: 2,
-	};
-	// --------------------------------------------------------------------
-
-	// Example of how you would define multiple squares
-	// const squares: SquareData[] = [
-	//   { id: 'sq1', x: 50, y: 50, size: 100, fill: 'skyblue' },
-	//   { id: 'sq2', x: 180, y: 80, size: 50, fill: 'lightgreen' },
-	// ];
-
+function Board({ width, height, children }: BoardProps) {
 	return (
 		<div>
 			<svg
@@ -55,35 +35,7 @@ function Board({ width, height }: BoardProps) {
 				height={height}
 				style={{ backgroundColor: '#f9f9f9' }}
 			>
-				{/*
-          The SVG <rect> element is used to draw rectangles and squares.
-          We dynamically bind its attributes to the properties of our 'square' object.
-        */}
-				<rect
-					x={square.x}
-					y={square.y}
-					width={square.size}
-					height={square.size} // For a square, height is the same as width
-					fill={square.fill}
-					stroke={square.stroke}
-					strokeWidth={square.strokeWidth}
-				/>
-
-				{/*
-          If you wanted to render multiple squares, you would map over the array.
-          Don't forget to use the 'key' prop for list rendering in React.
-          
-          {squares.map(sq => (
-            <rect
-              key={sq.id}
-              x={sq.x}
-              y={sq.y}
-              width={sq.size}
-              height={sq.size}
-              fill={sq.fill}
-            />
-          ))}
-        */}
+				{children}
 			</svg>
 		</div>
 	);
