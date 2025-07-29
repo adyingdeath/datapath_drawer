@@ -6,7 +6,7 @@ import { Scene } from './draw/Scene';
 import { Shape } from './draw/shape/Shape';
 
 function App() {
-  const scene = useRef(new Scene(15));
+  const [scene, setScene] = useState(new Scene(15));
 
   const datapath = new DataPathElement({
     gridSize: 15,
@@ -32,38 +32,11 @@ function App() {
     },
   });
 
-  const line2 = new Polyline({
-    id: 'data-bus-1',
-    x: 0,
-    y: 0,
-    gridSize: 1,
-    points: [
-      {
-        x: datapath.findConnectionPoint("rs1_addr").pixelX,
-        y: datapath.findConnectionPoint("rs1_addr").pixelY,
-      },
-      { x: datapath.findConnectionPoint("rs1_addr").pixelX - 100, y: datapath.findConnectionPoint("rs1_addr").pixelY },
-      { x: datapath.findConnectionPoint("rs2_addr").pixelX - 100, y: datapath.findConnectionPoint("rs2_addr").pixelY },
-      {
-        x: datapath.findConnectionPoint("rs2_addr").pixelX,
-        y: datapath.findConnectionPoint("rs2_addr").pixelY,
-      }
-    ],
-    color: '#000', // Fuchsia color
-    style: 'solid',
-    startArrow: true,
-    endArrow: true,
-    startBitWidth: 32,
-    endBitWidth: 16,
-    strokeWidth: 1
-  });
-
   const [points, setPoints] = useState<{ x: number, y: number }[]>([]);
 
   useEffect(() => {
-    scene.current.addShape(datapath);
-    console.log(scene.current.occupiedArea.isOccupied(9, 5));
-    setPoints(scene.current.link("reg-file.rs1_addr", "reg-file.rs2_addr") ?? []);
+    scene.addShape(datapath);
+    setPoints(scene.link("reg-file.rs1_addr", "reg-file.rs2_data") ?? []);
   }, []);
 
   return (
@@ -79,48 +52,7 @@ function App() {
               <line x1={15 * index} x2={15 * index} y1={0} y2={15 * 80} stroke="#CCC" strokeWidth={1}></line>
             </>
           ))}
-          {datapath.toSvgElement()}
-          {<rect
-            x={datapath.findConnectionPoint("rs1_addr").pixelX - 1}
-            y={datapath.findConnectionPoint("rs1_addr").pixelY - 1}
-            width={2}
-            height={2}
-            fill="#FF0000"
-            stroke="#FF0000"
-          />}
-          {<rect
-            x={datapath.findConnectionPoint("rs2_addr").pixelX - 1}
-            y={datapath.findConnectionPoint("rs2_addr").pixelY - 1}
-            width={2}
-            height={2}
-            fill="#FF0000"
-            stroke="#FF0000"
-          />}
-          {<rect
-            x={datapath.findConnectionPoint("rd_addr").pixelX - 1}
-            y={datapath.findConnectionPoint("rd_addr").pixelY - 1}
-            width={2}
-            height={2}
-            fill="#FF0000"
-            stroke="#FF0000"
-          />}
-          {<rect
-            x={datapath.findConnectionPoint("rd_data").pixelX - 1}
-            y={datapath.findConnectionPoint("rd_data").pixelY - 1}
-            width={2}
-            height={2}
-            fill="#FF0000"
-            stroke="#FF0000"
-          />}
-          {<rect
-            x={datapath.findConnectionPoint("rs1_data").pixelX - 1}
-            y={datapath.findConnectionPoint("rs1_data").pixelY - 1}
-            width={2}
-            height={2}
-            fill="#FF0000"
-            stroke="#FF0000"
-          />}
-          {/* line2.toSvgElement() */}
+          {scene.shapes.map((s) => s.toSvgElement())}
           {points.map((p) => (
             <rect
               x={p.x * 15 + 7.5 - 1}
@@ -134,7 +66,7 @@ function App() {
           {Array.from({length: 40}).map((_, x) => {
             return Array.from({length: 40}).map((_, y) => {
               return (
-                scene.current.occupiedArea.isOccupied(x, y) ?
+                scene.occupiedArea.isOccupied(x, y) ?
                   <rect
                     x={x * 15}
                     y={y * 15}
