@@ -1,8 +1,12 @@
+import { useEffect, useRef, useState } from 'react';
 import Board from './Board'
 import { DataPathElement } from './draw/shape/DataPathElement'
 import { Polyline } from './draw/shape/Polyline';
+import { Scene } from './draw/Scene';
 
 function App() {
+  const scene = useRef(new Scene(15));
+
   const datapath = new DataPathElement({
     gridSize: 15,
     x: 8,
@@ -53,6 +57,13 @@ function App() {
     strokeWidth: 1
   });
 
+  const [points, setPoints] = useState<{ x: number, y: number }[]>([]);
+
+  useEffect(() => {
+    scene.current.addShape(datapath);
+    setPoints(scene.current.link("reg-file.rs1_addr", "reg-file.rs2_addr") ?? []);
+  }, []);
+
   return (
     <div className="w-full h-dvh flex">
       <div className="w-72">
@@ -60,6 +71,12 @@ function App() {
       </div>
       <div className="flex-1 w-full h-full overflow-auto">
         <Board width={4000} height={3000}>
+          {new Array(40).fill(0).map((_, index) => (
+            <>
+            <line x1={0} y1={15*index} x2={15*80} y2={15*index} stroke="#CCC" strokeWidth={1}></line>
+            <line x1={15*index} x2={15*index} y1={0} y2={15*80} stroke="#CCC" strokeWidth={1}></line>
+            </>
+          ))}
           {datapath.toSvgElement()}
           {<rect
             x={datapath.getPortConnectionPoint("rs1_addr").x - 1}
@@ -101,7 +118,17 @@ function App() {
             fill="#FF0000"
             stroke="#FF0000"
           />}
-          {line2.toSvgElement()}
+          {/* line2.toSvgElement() */}
+          {points.map((p) => (
+            <rect
+              x={p.x - 1}
+              y={p.y - 1}
+              width={2}
+              height={2}
+              fill="#00FF00"
+              stroke="#00FF00"
+            />
+          ))}
         </Board>
       </div>
     </div>

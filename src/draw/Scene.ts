@@ -1,6 +1,7 @@
+import { AStarPathfinder } from "./AStarPathFinder";
 import type { ConnectionPoint, Grid, Shape } from "./shape/Shape";
 
-export class ShapeGenerator {
+export class Scene {
     private gridSize = 15;
     private left = 0;
     private right = 0;
@@ -127,5 +128,25 @@ export class ShapeGenerator {
     public link(port1query: string, port2query: string) {
         const port1 = this.select(port1query) as ConnectionPoint;
         const port2 = this.select(port2query) as ConnectionPoint;
+
+        if (!port1 || !port2) {
+            console.error("One or both connection points not found.");
+            return;
+        }
+
+        const startPoint = { x: port1.pos.x, y: port1.pos.y };
+        const endPoint = { x: port2.pos.x, y: port2.pos.y };
+
+        console.log(startPoint, endPoint)
+        
+        const astar = new AStarPathfinder(this.occupiedArea, this.gridSize);
+        const path = astar.findPath(startPoint, endPoint);
+
+        if (path) {
+            console.log("Path found:", path);
+            return path;
+        } else {
+            console.log("No path found between the two points.");
+        }
     }
 }
