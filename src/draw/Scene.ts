@@ -134,8 +134,8 @@ export class Scene {
             return;
         }
 
-        const startPoint = { x: port1.pos.x, y: port1.pos.y };
-        const endPoint = { x: port2.pos.x, y: port2.pos.y };
+        const startPoint = { x: port1.x, y: port1.y };
+        const endPoint = { x: port2.x, y: port2.y };
 
         console.log(startPoint, endPoint)
         

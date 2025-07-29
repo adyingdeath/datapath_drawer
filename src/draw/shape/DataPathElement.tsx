@@ -1,7 +1,5 @@
 import React from 'react';
-import { ConnectionPoint, Shape, type Grid, type ShapeOptions } from './Shape'; // Assuming Shape.tsx is in the same directory
-
-// --- Interfaces ---
+import { ConnectionPoint, Shape, type Grid, type ShapeOptions } from './Shape';
 
 export interface Port {
     id: string;
@@ -21,7 +19,6 @@ export interface DataPathElementOptions extends ShapeOptions {
     fillColor?: string;
 }
 
-// --- TextMeasurer Utility (Unchanged) ---
 class TextMeasurer {
     private static context: CanvasRenderingContext2D | null = null;
     private static getContext(): CanvasRenderingContext2D {
@@ -38,12 +35,11 @@ class TextMeasurer {
     }
 }
 
-
-// --- DataPathElement Class (Revised) ---
-
 /**
- * Represents a data path element configured for a specific grid size.
- * Its dimensions and port locations are pre-calculated upon instantiation.
+ * Represents a data path element.
+ * Its core rectangle and ports are aligned to the center of grid cells.
+ * The component's (x, y) refers to the grid coordinate of the top-left
+ * of its main rectangle body.
  */
 export class DataPathElement extends Shape {
     public readonly ports: {
@@ -59,25 +55,20 @@ export class DataPathElement extends Shape {
     public readonly connectionPoints: ConnectionPoint[];
     public readonly occupiedArea: Grid[];
 
-    // Pre-calculated rendering data, stored for efficiency.
+    // Pre-calculated grid and rendering data.
     private readonly renderData: {
-        px: number;
-        py: number;
-        rectWidthPx: number;
-        rectHeightPx: number;
-        rectYOffset: number;
+        widthInGrid: number;
+        heightInGrid: number;
+        portGridSpacing: number;
+        leftPortsStartYGridOffset: number;
+        rightPortsStartYGridOffset: number;
         textPadding: number;
         externalTitleMargin: number;
-        portSpacingPx: number;
-        leftPortsStartY: number;
-        rightPortsStartY: number;
     };
 
     constructor(options: DataPathElementOptions) {
-        // Pass a subset of options to the parent constructor.
-        super({ gridSize: options.gridSize, x: options.x, y: options.y, color: options.color, id: options.id });
+        super(options);
 
-        // Store configuration properties from options.
         this.ports = {
             left: options.ports?.left ?? [],
             right: options.ports?.right ?? [],
@@ -89,139 +80,111 @@ export class DataPathElement extends Shape {
         this.fontFamily = options.fontFamily ?? 'sans-serif';
         this.fillColor = options.fillColor ?? '#FFFFFF';
 
-        // Pre-calculate all rendering data.
         this.renderData = this._calculateRenderData();
         this.connectionPoints = this._calculateConnectionPoints();
         this.occupiedArea = this.calculateOccupiedArea();
     }
+    
+    /**
+     * Calculates all rendering data in grid units.
+     */
+    private _calculateRenderData() {
+        const textPadding = this.fontSize * 0.75;
+        const externalTitleMargin = this.fontSize * 0.5;
+
+        // --- 1. Measure Text in Pixels ---
+        const measure = (text: string) => TextMeasurer.measure(text, this.fontSize, this.fontFamily);
+        const leftPortTitlesWidth = Math.max(0, ...this.ports.left.map(p => measure(p.title)));
+        const rightPortTitlesWidth = Math.max(0, ...this.ports.right.map(p => measure(p.title)));
+        const centerTitleWidth = measure(this.centerTitle ?? '');
+        const topBottomTitleWidth = Math.max(measure(this.topTitle ?? ''), measure(this.bottomTitle ?? ''));
+
+        // --- 2. Calculate Required Dimensions in Grid Units ---
+        const minContentWidthPx = leftPortTitlesWidth + centerTitleWidth + rightPortTitlesWidth + 4 * textPadding;
+        const minWidthPx = Math.max(minContentWidthPx, topBottomTitleWidth);
+        const widthInGrid = Math.max(1, Math.ceil(minWidthPx / this.gridSize));
+
+        const minPortSpacingPx = 2.5 * this.fontSize;
+        const portGridSpacing = Math.max(1, Math.ceil(minPortSpacingPx / this.gridSize));
+        
+        const calcMinHeight = (portCount: number) => {
+            if (portCount === 0) return 1;
+            // Total height needed for the ports themselves, including spacing.
+            // A top and bottom margin of `portGridSpacing` is added.
+            return (portCount - 1) * portGridSpacing + 2 * portGridSpacing;
+        };
+
+        const minHeightInGrid = Math.max(calcMinHeight(this.ports.left.length), calcMinHeight(this.ports.right.length));
+        const heightInGrid = Math.max(1, minHeightInGrid);
+
+        const calcPortStartYOffset = (portCount: number) => {
+            if (portCount === 0) return 0;
+            // Total span of ports from first to last center
+            const blockGridSpan = (portCount - 1) * portGridSpacing + 1;
+            const remainingSpace = heightInGrid - blockGridSpan;
+            return Math.floor(remainingSpace / 2);
+        };
+
+        const leftPortsStartYGridOffset = calcPortStartYOffset(this.ports.left.length);
+        const rightPortsStartYGridOffset = calcPortStartYOffset(this.ports.right.length);
+
+        return {
+            widthInGrid, heightInGrid, portGridSpacing,
+            leftPortsStartYGridOffset, rightPortsStartYGridOffset,
+            textPadding, externalTitleMargin
+        };
+    }
 
     /**
-     * Calculates all connection points and their absolute coordinates.
-     * This is called once by the constructor.
-     * @returns An array of ConnectionPoint objects.
+     * Calculates all connection points and their absolute grid coordinates.
      */
     private _calculateConnectionPoints(): ConnectionPoint[] {
         const points: ConnectionPoint[] = [];
-        const {
-            px, py, rectWidthPx, rectYOffset, portSpacingPx,
-            leftPortsStartY, rightPortsStartY
-        } = this.renderData;
+        const { widthInGrid, portGridSpacing, leftPortsStartYGridOffset, rightPortsStartYGridOffset } = this.renderData;
 
-        // Calculate left port coordinates
+        // Calculate left port grid coordinates
         this.ports.left.forEach((port, index) => {
-            const portY = leftPortsStartY + index * portSpacingPx;
-            const finalX = px;
-            const finalY = py + rectYOffset + portY;
-            points.push(new ConnectionPoint(port.id, finalX, finalY));
+            const gridX = this.x;
+            const gridY = this.y + leftPortsStartYGridOffset + (index * portGridSpacing);
+            points.push(new ConnectionPoint(port.id, gridX, gridY, this.toPixelCenter(gridX), this.toPixelCenter(gridY)));
         });
 
-        // Calculate right port coordinates
+        // Calculate right port grid coordinates
         this.ports.right.forEach((port, index) => {
-            const portY = rightPortsStartY + index * portSpacingPx;
-            const finalX = px + rectWidthPx;
-            const finalY = py + rectYOffset + portY;
-            points.push(new ConnectionPoint(port.id, finalX, finalY));
+            const gridX = this.x + widthInGrid - 1;
+            const gridY = this.y + rightPortsStartYGridOffset + (index * portGridSpacing);
+            points.push(new ConnectionPoint(port.id, gridX, gridY, this.toPixelCenter(gridX), this.toPixelCenter(gridY)));
         });
 
         return points;
     }
-
-    /**
-     * Calculates and returns all necessary rendering data.
-     * This is now a private method called only by the constructor.
-     */
-    private _calculateRenderData() {
-        // --- 1. Define Spacing and Padding ---
-        const minPortSpacingPx = 2.5 * this.fontSize;
-        // Ensure spacing is a multiple of the grid size.
-        const portSpacingPx = Math.ceil(minPortSpacingPx / this.gridSize) * this.gridSize;
-        const textPadding = this.fontSize * 0.75;
-        const externalTitleMargin = this.fontSize * 0.5;
-
-        // --- 2. Measure Text ---
-        const measure = (text: string) => TextMeasurer.measure(text, this.fontSize, this.fontFamily);
-        
-        const leftPortTitlesWidth = Math.max(0, ...this.ports.left.map(p => measure(p.title)));
-        const rightPortTitlesWidth = Math.max(0, ...this.ports.right.map(p => measure(p.title)));
-        
-        const centerTitleWidth = measure(this.centerTitle ?? '');
-        const topBottomTitleWidth = Math.max(measure(this.topTitle ?? ''), measure(this.bottomTitle ?? ''));
-        
-        // --- 3. Calculate Minimum Required Dimensions (Pixels) ---
-
-        // YOUR MODIFICATION IS HERE: Use center title width for more accurate content width.
-        const minContentWidth = leftPortTitlesWidth + centerTitleWidth + rightPortTitlesWidth + 4 * textPadding;
-        const minWidthPx = Math.max(minContentWidth, topBottomTitleWidth);
-        
-        const verticalPortCount = Math.max(this.ports.left.length, this.ports.right.length);
-        const portBlockHeight = verticalPortCount > 0 ? (verticalPortCount - 1) * portSpacingPx : 0;
-        const minRectHeightPx = portBlockHeight + 2 * portSpacingPx;
-
-        // --- 4. Snap Dimensions to Grid ---
-        const rectWidthInGridUnits = Math.ceil(minWidthPx / this.gridSize);
-        const rectHeightInGridUnits = Math.ceil(minRectHeightPx / this.gridSize);
-        
-        // --- 5. Final Pixel Values & Offsets ---
-        const px = this.toPixel(this.x);
-        const py = this.toPixel(this.y);
-        
-        const rectWidthPx = this.toPixel(rectWidthInGridUnits);
-        const rectHeightPx = this.toPixel(rectHeightInGridUnits);
-        
-        const rectYOffset = this.topTitle ? (this.fontSize + externalTitleMargin) : 0;
-        
-        const calcPortStartY = (portCount: number) => {
-            if (portCount === 0) return 0;
-            const blockH = (portCount - 1) * portSpacingPx;
-            return (rectHeightPx - blockH) / 2;
-        };
-
-        const leftPortsStartY = calcPortStartY(this.ports.left.length);
-        const rightPortsStartY = calcPortStartY(this.ports.right.length);
-
-        return {
-            px, py, 
-            rectWidthPx, rectHeightPx, rectYOffset,
-            textPadding, externalTitleMargin, portSpacingPx,
-            leftPortsStartY, rightPortsStartY
-        };
-    }
-
+    
     /**
      * Calculates the total bounding box of the element in grid units.
-     * This includes the main rectangle and any external titles.
-     * This method is required by the abstract Shape class.
      */
     public calculateOccupiedArea(): Grid[] {
-        // Use pre-calculated data for dimensions.
-        const {
-            rectWidthPx,
-            rectHeightPx,
-            rectYOffset,
-            externalTitleMargin,
-        } = this.renderData;
+        const { widthInGrid, heightInGrid, externalTitleMargin } = this.renderData;
 
-        // The total width is simply the width of the main rectangle.
-        const totalWidthPx = rectWidthPx;
-
-        // The total height is the sum of the top title's offset, the rectangle's height,
-        // and the space for the bottom title if it exists.
-        let totalHeightPx = rectYOffset + rectHeightPx;
-        if (this.bottomTitle) {
-            totalHeightPx += externalTitleMargin + this.fontSize;
+        let topOffsetGrid = 0;
+        if (this.topTitle) {
+            topOffsetGrid = Math.ceil((this.fontSize + externalTitleMargin) / this.gridSize);
         }
 
-        // Convert the final pixel dimensions to grid units, rounding up.
-        const occupiedWidthInGrid = Math.ceil(totalWidthPx / this.gridSize);
-        const occupiedHeightInGrid = Math.ceil(totalHeightPx / this.gridSize);
+        let bottomOffsetGrid = 0;
+        if (this.bottomTitle) {
+            bottomOffsetGrid = Math.ceil((this.fontSize + externalTitleMargin) / this.gridSize);
+        }
 
-        // The entire element occupies a single rectangular area starting at its (x,y)
-        // with the calculated width (dx) and height (dy) in grid units.
+        const occupiedX = this.x;
+        const occupiedY = this.y - topOffsetGrid;
+        const occupiedW = widthInGrid;
+        const occupiedH = topOffsetGrid + heightInGrid + bottomOffsetGrid;
+
         return [{
-            x: this.x,
-            y: this.y,
-            dx: occupiedWidthInGrid,
-            dy: occupiedHeightInGrid,
+            x: occupiedX,
+            y: occupiedY,
+            dx: occupiedW,
+            dy: occupiedH,
         }];
     }
 
@@ -229,26 +192,32 @@ export class DataPathElement extends Shape {
      * Converts this DataPathElement into its React-renderable SVG representation.
      */
     public toSvgElement(): React.ReactElement {
-        // Use the pre-calculated renderData.
-        const {
-            px, py, 
-            rectWidthPx, rectHeightPx, rectYOffset,
-            textPadding, externalTitleMargin, portSpacingPx,
-            leftPortsStartY, rightPortsStartY
-        } = this.renderData;
+        const { widthInGrid, heightInGrid, textPadding, externalTitleMargin } = this.renderData;
+
+        // --- Calculate Pixel Geometry for Rendering ---
+        
+        // The rectangle's corners are at the center of grid cells.
+        const rectPx = this.toPixelCenter(this.x);
+        const rectPy = this.toPixelCenter(this.y);
+        const rectWidthPx = (widthInGrid > 1) ? (widthInGrid - 1) * this.gridSize : 0;
+        const rectHeightPx = (heightInGrid > 1) ? (heightInGrid - 1) * this.gridSize : 0;
+
+        const rectCenterX = rectPx + rectWidthPx / 2;
+        const rectCenterY = rectPy + rectHeightPx / 2;
 
         return (
-            <g key={this.id} transform={`translate(${px}, ${py})`} fontFamily={this.fontFamily}>
+            <g key={this.id} fontFamily={this.fontFamily}>
                 {/* Top Title (External) */}
                 {this.topTitle && (
-                    <text x={rectWidthPx / 2} y={this.fontSize} textAnchor="middle" dominantBaseline="middle" fontSize={this.fontSize} fill={this.color}>
+                    <text x={rectCenterX} y={rectPy - externalTitleMargin} textAnchor="middle" dominantBaseline="alphabetic" fontSize={this.fontSize} fill={this.color}>
                         {this.topTitle}
                     </text>
                 )}
 
                 {/* Main Rectangle Body */}
                 <rect
-                    y={rectYOffset}
+                    x={rectPx}
+                    y={rectPy}
                     width={rectWidthPx}
                     height={rectHeightPx}
                     fill={this.fillColor}
@@ -258,35 +227,39 @@ export class DataPathElement extends Shape {
 
                 {/* Center Title (Internal) */}
                 {this.centerTitle && (
-                    <text x={rectWidthPx / 2} y={rectYOffset + rectHeightPx / 2} textAnchor="middle" dominantBaseline="middle" fontSize={this.fontSize} fill={this.color}>
+                    <text x={rectCenterX} y={rectCenterY} textAnchor="middle" dominantBaseline="middle" fontSize={this.fontSize} fill={this.color}>
                         {this.centerTitle}
                     </text>
                 )}
 
                 {/* Bottom Title (External) */}
                 {this.bottomTitle && (
-                    <text x={rectWidthPx / 2} y={rectYOffset + rectHeightPx + externalTitleMargin + (this.fontSize / 2)} textAnchor="middle" dominantBaseline="middle" fontSize={this.fontSize} fill={this.color}>
+                    <text x={rectCenterX} y={rectPy + rectHeightPx + externalTitleMargin} textAnchor="middle" dominantBaseline="hanging" fontSize={this.fontSize} fill={this.color}>
                         {this.bottomTitle}
                     </text>
                 )}
                 
                 {/* Port Rendering */}
                 <g className="ports">
-                    {/* Left Ports (Centered Group) */}
-                    {this.ports.left.map((port, index) => {
-                        const portY = rectYOffset + leftPortsStartY + index * portSpacingPx;
+                    {/* Left Ports */}
+                    {this.ports.left.map((port) => {
+                        const cp = this.findConnectionPoint(port.id);
+                        const portPx = this.toPixelCenter(cp.x);
+                        const portPy = this.toPixelCenter(cp.y);
                         return (
-                            <text key={port.id} x={textPadding} y={portY} dominantBaseline="middle" fontSize={this.fontSize} fill={this.color}>
+                            <text key={port.id} x={portPx + textPadding} y={portPy} dominantBaseline="middle" fontSize={this.fontSize} fill={this.color}>
                                 {port.title}
                             </text>
                         );
                     })}
 
-                    {/* Right Ports (Centered Group) */}
-                    {this.ports.right.map((port, index) => {
-                        const portY = rectYOffset + rightPortsStartY + index * portSpacingPx;
+                    {/* Right Ports */}
+                    {this.ports.right.map((port) => {
+                        const cp = this.findConnectionPoint(port.id);
+                        const portPx = this.toPixelCenter(cp.x);
+                        const portPy = this.toPixelCenter(cp.y);
                         return (
-                            <text key={port.id} x={rectWidthPx - textPadding} y={portY} textAnchor="end" dominantBaseline="middle" fontSize={this.fontSize} fill={this.color}>
+                            <text key={port.id} x={portPx - textPadding} y={portPy} textAnchor="end" dominantBaseline="middle" fontSize={this.fontSize} fill={this.color}>
                                 {port.title}
                             </text>
                         );

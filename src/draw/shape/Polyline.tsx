@@ -7,7 +7,7 @@ export interface Point {
 }
 
 export interface PolylineOptions extends ShapeOptions {
-    points: Point[];
+    points: Point[]; // These are now GRID coordinates.
     startArrow?: boolean;
     endArrow?: boolean;
     style?: 'solid' | 'dashed';
@@ -19,11 +19,10 @@ export interface PolylineOptions extends ShapeOptions {
 
 /**
  * Represents a multi-segment line (Polyline).
- * Coordinates are specified in absolute pixels, not grid units.
- * Supports arrowheads, dashing, and bit width annotations.
+ * Coordinates are specified in grid units and rendered connecting the center of grid cells.
  */
 export class Polyline extends Shape {
-    public readonly points: Point[];
+    public readonly points: Point[]; // Grid coordinates
     public readonly startArrow: boolean;
     public readonly endArrow: boolean;
     public readonly style: 'solid' | 'dashed';
@@ -35,6 +34,7 @@ export class Polyline extends Shape {
     public readonly occupiedArea: Grid[];
 
     constructor(options: PolylineOptions) {
+        // Polyline's own (x,y) is not used for positioning, it's defined by its points.
         super({ ...options, x: 0, y: 0 });
 
         this.points = options.points;
@@ -51,21 +51,19 @@ export class Polyline extends Shape {
     }
 
     /**
-     * Creates ConnectionPoint objects for the start and end of the polyline.
-     * This is called once by the constructor.
-     * @returns An array of ConnectionPoint objects.
+     * Creates ConnectionPoint objects (using grid coordinates) for the start and end of the polyline.
      */
     private _calculateConnectionPoints(): ConnectionPoint[] {
         const points: ConnectionPoint[] = [];
 
         if (this.points.length > 0) {
             const start = this.points[0];
-            points.push(new ConnectionPoint('start', start.x, start.y));
+            points.push(new ConnectionPoint('start', start.x, start.y, this.toPixelCenter(start.x), this.toPixelCenter(start.y)));
         }
 
         if (this.points.length > 1) {
             const end = this.points[this.points.length - 1];
-            points.push(new ConnectionPoint('end', end.x, end.y));
+            points.push(new ConnectionPoint('end', end.x, end.y, this.toPixelCenter(end.x), this.toPixelCenter(end.y)));
         }
         
         return points;
@@ -73,27 +71,26 @@ export class Polyline extends Shape {
     
     /**
      * Calculates all grid cells occupied by the polyline's path.
-     * This uses a line-drawing algorithm to find every grid cell the line passes through.
-     * @returns An array of Grid objects representing the occupied cells.
+     * It traces the line connecting the center of grid cells.
      */
     public calculateOccupiedArea(): Grid[] {
-        // This method might be called by the super constructor before `this.points` is set.
         if (!this.points || this.points.length < 2) {
             return [];
         }
         
         const occupiedCells = new Set<string>();
 
-        // Iterate over each segment of the polyline
         for (let i = 0; i < this.points.length - 1; i++) {
-            const p1 = this.points[i];
-            const p2 = this.points[i + 1];
+            const p1_grid = this.points[i];
+            const p2_grid = this.points[i + 1];
+
+            // Convert grid points to centered pixel coordinates for line tracing
+            const p1 = { x: this.toPixelCenter(p1_grid.x), y: this.toPixelCenter(p1_grid.y) };
+            const p2 = { x: this.toPixelCenter(p2_grid.x), y: this.toPixelCenter(p2_grid.y) };
 
             const dx = p2.x - p1.x;
             const dy = p2.y - p1.y;
 
-            // Determine the number of steps needed to traverse the line,
-            // ensuring we don't skip any grid cells.
             const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / this.gridSize) * 2;
             
             if (steps === 0) {
@@ -106,7 +103,6 @@ export class Polyline extends Shape {
             const xIncrement = dx / steps;
             const yIncrement = dy / steps;
             
-            // "Walk" along the line segment, adding each grid cell we touch to the set.
             for (let j = 0; j <= steps; j++) {
                 const currentX = p1.x + j * xIncrement;
                 const currentY = p1.y + j * yIncrement;
@@ -118,7 +114,6 @@ export class Polyline extends Shape {
             }
         }
         
-        // Convert the set of unique "x,y" strings back to Grid objects.
         return Array.from(occupiedCells, cell => {
             const [x, y] = cell.split(',').map(Number);
             return { x, y };
@@ -126,17 +121,12 @@ export class Polyline extends Shape {
     }
 
     /**
-     * Renders the bit width annotation (a 45-degree slash with a number) on a line segment.
-     * @param p1 The starting point of the segment.
-     * @param p2 The ending point of the segment.
-     * @param bitWidth The number to display.
-     * @returns A React element for the annotation.
+     * Renders the bit width annotation on a line segment defined by pixel coordinates.
      */
     private _renderBitWidthAnnotation(p1: Point, p2: Point, bitWidth: number): React.ReactElement {
-        // --- MODIFICATION IS HERE ---
-        const OFFSET_FROM_ENDPOINT = 20; // How far from p1 to place the annotation center
-        const SLASH_HALF_LENGTH = 5;     // The length of the slash from the center point
-        const TEXT_PERPENDICULAR_OFFSET = 8; // How far "up" from the line to place the text
+        const OFFSET_FROM_ENDPOINT = 20;
+        const SLASH_HALF_LENGTH = 5;
+        const TEXT_PERPENDICULAR_OFFSET = 8;
 
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
@@ -146,38 +136,27 @@ export class Polyline extends Shape {
             return <></>;
         }
         
-        // Calculate the center position of the annotation on the line segment
         const annotationX = p1.x + (dx / segmentLength) * OFFSET_FROM_ENDPOINT;
         const annotationY = p1.y + (dy / segmentLength) * OFFSET_FROM_ENDPOINT;
-
-        // Calculate the angle of the segment for rotating the entire annotation group
         const angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
-
-        // This transform moves the annotation to the correct point on the line
-        // and rotates its coordinate system so that the local x-axis aligns with the line.
         const groupTransform = `translate(${annotationX}, ${annotationY}) rotate(${angleDeg})`;
 
         return (
             <g transform={groupTransform} stroke={this.color} fill={this.color}>
-                {/* The slash, drawn vertically and then rotated by -45 degrees
-                    relative to the line's perpendicular axis. This results in a
-                    45-degree angle to the line itself. */}
                 <line 
                     x1="0" y1={-SLASH_HALF_LENGTH} 
                     x2="0" y2={SLASH_HALF_LENGTH} 
                     strokeWidth="1"
                     transform="rotate(-45)"
                 />
-                {/* The bit width text. It is positioned perpendicularly "above" the line.
-                    The text itself is counter-rotated to remain upright and readable. */}
                 <text
-                    x="0" // Centered on the annotation point
-                    y={-TEXT_PERPENDICULAR_OFFSET} // Offset perpendicularly
+                    x="0"
+                    y={-TEXT_PERPENDICULAR_OFFSET}
                     dominantBaseline="middle"
-                    textAnchor="middle" // Anchor from its center
+                    textAnchor="middle"
                     fontSize={this.fontSize}
-                    stroke="none" // Text should not have a stroke
-                    transform={`rotate(${-angleDeg})`} // Counter-rotate text to keep it upright
+                    stroke="none"
+                    transform={`rotate(${-angleDeg})`}
                 >
                     {bitWidth}
                 </text>
@@ -187,16 +166,16 @@ export class Polyline extends Shape {
 
 
     /**
-     * Converts this Polyline into its React-renderable SVG representation. (Unchanged)
+     * Converts this Polyline into its React-renderable SVG representation.
      */
     public toSvgElement(): React.ReactElement {
         if (this.points.length < 2) {
             return <></>;
         }
         
-        const pointsString = this.points.map(p => `${p.x},${p.y}`).join(' ');
+        // Convert grid coordinates to centered pixel coordinates for the <polyline> element.
+        const pointsString = this.points.map(p => `${this.toPixelCenter(p.x)},${this.toPixelCenter(p.y)}`).join(' ');
         const markerId = `arrowhead-${this.id}`;
-
         const needsMarker = this.startArrow || this.endArrow;
 
         return (
@@ -228,12 +207,16 @@ export class Polyline extends Shape {
                 />
                 
                 {this.startBitWidth !== undefined && (
-                   this._renderBitWidthAnnotation(this.points[0], this.points[1], this.startBitWidth)
+                   this._renderBitWidthAnnotation(
+                       { x: this.toPixelCenter(this.points[0].x), y: this.toPixelCenter(this.points[0].y) },
+                       { x: this.toPixelCenter(this.points[1].x), y: this.toPixelCenter(this.points[1].y) },
+                       this.startBitWidth
+                   )
                 )}
                 {this.endBitWidth !== undefined && (
                     this._renderBitWidthAnnotation(
-                        this.points[this.points.length - 1],
-                        this.points[this.points.length - 2], 
+                        { x: this.toPixelCenter(this.points[this.points.length - 1].x), y: this.toPixelCenter(this.points[this.points.length - 1].y) },
+                        { x: this.toPixelCenter(this.points[this.points.length - 2].x), y: this.toPixelCenter(this.points[this.points.length - 2].y) },
                         this.endBitWidth
                     )
                 )}

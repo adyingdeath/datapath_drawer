@@ -3,6 +3,7 @@ import Board from './Board'
 import { DataPathElement } from './draw/shape/DataPathElement'
 import { Polyline } from './draw/shape/Polyline';
 import { Scene } from './draw/Scene';
+import { Shape } from './draw/shape/Shape';
 
 function App() {
   const scene = useRef(new Scene(15));
@@ -38,14 +39,14 @@ function App() {
     gridSize: 1,
     points: [
       {
-        x: datapath.findConnectionPoint("rs1_addr").pos.x,
-        y: datapath.findConnectionPoint("rs1_addr").pos.y,
+        x: datapath.findConnectionPoint("rs1_addr").pixelX,
+        y: datapath.findConnectionPoint("rs1_addr").pixelY,
       },
-      { x: datapath.findConnectionPoint("rs1_addr").pos.x - 100, y: datapath.findConnectionPoint("rs1_addr").pos.y },
-      { x: datapath.findConnectionPoint("rs2_addr").pos.x - 100, y: datapath.findConnectionPoint("rs2_addr").pos.y },
+      { x: datapath.findConnectionPoint("rs1_addr").pixelX - 100, y: datapath.findConnectionPoint("rs1_addr").pixelY },
+      { x: datapath.findConnectionPoint("rs2_addr").pixelX - 100, y: datapath.findConnectionPoint("rs2_addr").pixelY },
       {
-        x: datapath.findConnectionPoint("rs2_addr").pos.x,
-        y: datapath.findConnectionPoint("rs2_addr").pos.y,
+        x: datapath.findConnectionPoint("rs2_addr").pixelX,
+        y: datapath.findConnectionPoint("rs2_addr").pixelY,
       }
     ],
     color: '#000', // Fuchsia color
@@ -79,40 +80,40 @@ function App() {
           ))}
           {datapath.toSvgElement()}
           {<rect
-            x={datapath.findConnectionPoint("rs1_addr").pos.x - 1}
-            y={datapath.findConnectionPoint("rs1_addr").pos.y - 1}
+            x={datapath.findConnectionPoint("rs1_addr").pixelX - 1}
+            y={datapath.findConnectionPoint("rs1_addr").pixelY - 1}
             width={2}
             height={2}
             fill="#FF0000"
             stroke="#FF0000"
           />}
           {<rect
-            x={datapath.findConnectionPoint("rs2_addr").pos.x - 1}
-            y={datapath.findConnectionPoint("rs2_addr").pos.y - 1}
+            x={datapath.findConnectionPoint("rs2_addr").pixelX - 1}
+            y={datapath.findConnectionPoint("rs2_addr").pixelY - 1}
             width={2}
             height={2}
             fill="#FF0000"
             stroke="#FF0000"
           />}
           {<rect
-            x={datapath.findConnectionPoint("rd_addr").pos.x - 1}
-            y={datapath.findConnectionPoint("rd_addr").pos.y - 1}
+            x={datapath.findConnectionPoint("rd_addr").pixelX - 1}
+            y={datapath.findConnectionPoint("rd_addr").pixelY - 1}
             width={2}
             height={2}
             fill="#FF0000"
             stroke="#FF0000"
           />}
           {<rect
-            x={datapath.findConnectionPoint("rd_data").pos.x - 1}
-            y={datapath.findConnectionPoint("rd_data").pos.y - 1}
+            x={datapath.findConnectionPoint("rd_data").pixelX - 1}
+            y={datapath.findConnectionPoint("rd_data").pixelY - 1}
             width={2}
             height={2}
             fill="#FF0000"
             stroke="#FF0000"
           />}
           {<rect
-            x={datapath.findConnectionPoint("rs1_data").pos.x - 1}
-            y={datapath.findConnectionPoint("rs1_data").pos.y - 1}
+            x={datapath.findConnectionPoint("rs1_data").pixelX - 1}
+            y={datapath.findConnectionPoint("rs1_data").pixelY - 1}
             width={2}
             height={2}
             fill="#FF0000"

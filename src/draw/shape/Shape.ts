@@ -8,16 +8,22 @@ export interface Grid {
 }
 
 /**
- * Represents a connectable point on a shape with pre-calculated, absolute pixel coordinates.
+ * Represents a connectable point on a shape, defined by its logical grid coordinates.
  * This is a simple value object.
  */
 export class ConnectionPoint {
     public readonly id: string;
-    public readonly pos: { x: number, y: number };
+    public readonly x: number;
+    public readonly y: number;
+    public readonly pixelX: number;
+    public readonly pixelY: number;
 
-    constructor(id: string, x: number, y: number) {
+    constructor(id: string, x: number, y: number, pixelX: number, pixelY: number) {
         this.id = id;
-        this.pos = { x, y };
+        this.x = x;
+        this.y = y;
+        this.pixelX = pixelX;
+        this.pixelY = pixelY;
     }
 }
 
@@ -95,10 +101,10 @@ export abstract class Shape {
     /**
      * Finds a specific connection point by its ID from the pre-calculated list.
      * @param pointId The unique identifier of the connection point.
-     * @returns The ConnectionPoint object, or undefined if not found.
+     * @returns The ConnectionPoint object, or a default 'null' point if not found.
      */
     public findConnectionPoint(pointId: string): ConnectionPoint {
-        return this.connectionPoints.find(p => p.id === pointId) ?? new ConnectionPoint("null", 0, 0);
+        return this.connectionPoints.find(p => p.id === pointId) ?? new ConnectionPoint("null", 0, 0, 0, 0);
     }
 
     /**
@@ -144,20 +150,30 @@ export abstract class Shape {
             maxY = Math.max(maxY, grid.y + (grid.dy || 1));
         }
 
-        const width = maxX - minX + 1;
-        const height = maxY - minY + 1;
+        const width = maxX - minX;
+        const height = maxY - minY;
 
         return { width, height };
     }
 
     /**
-     * A helper method to convert grid units to pixel values.
+     * A helper method to convert grid units to the top-left corner pixel values of a grid cell.
      * @param gridUnit The value in grid units (e.g., this.x or a width).
      * @returns The corresponding value in pixels.
      */
     protected toPixel(gridUnit: number): number {
         return gridUnit * this.gridSize;
     }
+
+    /**
+     * A helper method to convert grid units to the center pixel values of a grid cell.
+     * @param gridUnit The value in grid units (e.g., this.x).
+     * @returns The corresponding pixel value for the center of the grid cell.
+     */
+    protected toPixelCenter(gridUnit: number): number {
+        return (gridUnit * this.gridSize) + (this.gridSize / 2);
+    }
+
 
     /**
      * Checks if the specified coordinate is occupied by this shape.
