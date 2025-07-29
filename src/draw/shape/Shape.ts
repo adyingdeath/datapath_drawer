@@ -97,8 +97,8 @@ export abstract class Shape {
      * @param pointId The unique identifier of the connection point.
      * @returns The ConnectionPoint object, or undefined if not found.
      */
-    public findConnectionPoint(pointId: string): ConnectionPoint | undefined {
-        return this.connectionPoints.find(p => p.id === pointId);
+    public findConnectionPoint(pointId: string): ConnectionPoint {
+        return this.connectionPoints.find(p => p.id === pointId) ?? new ConnectionPoint("null", 0, 0);
     }
 
     /**

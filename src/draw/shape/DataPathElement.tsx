@@ -295,31 +295,4 @@ export class DataPathElement extends Shape {
             </g>
         );
     }
-    
-    /**
-     * Finds the absolute coordinates of a connection point for a given port ID.
-     */
-    public getPortConnectionPoint(portId: string): { x: number; y: number } {
-        // Use the pre-calculated renderData.
-        const {
-            px, py, 
-            rectWidthPx, rectYOffset,
-            portSpacingPx,
-            leftPortsStartY, rightPortsStartY
-        } = this.renderData;
-
-        const leftIndex = this.ports.left.findIndex(p => p.id === portId);
-        if (leftIndex !== -1) {
-            const portY = leftPortsStartY + leftIndex * portSpacingPx;
-            return { x: px, y: py + rectYOffset + portY - 1 };
-        }
-
-        const rightIndex = this.ports.right.findIndex(p => p.id === portId);
-        if (rightIndex !== -1) {
-            const portY = rightPortsStartY + rightIndex * portSpacingPx;
-            return { x: px + rectWidthPx, y: py + rectYOffset + portY - 1 };
-        }
-        
-        return { x: 0, y: 0 }; // Port not found
-    }
 }
