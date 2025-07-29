@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shape, type Grid, type ShapeOptions } from './Shape'; // Assuming Shape.tsx is in the same directory
+import { ConnectionPoint, Shape, type Grid, type ShapeOptions } from './Shape'; // Assuming Shape.tsx is in the same directory
 
 // --- Interfaces ---
 
@@ -56,6 +56,7 @@ export class DataPathElement extends Shape {
     public readonly fontSize: number;
     public readonly fontFamily: string;
     public readonly fillColor: string;
+    public readonly connectionPoints: ConnectionPoint[];
     public readonly occupiedArea: Grid[];
 
     // Pre-calculated rendering data, stored for efficiency.
@@ -90,7 +91,39 @@ export class DataPathElement extends Shape {
 
         // Pre-calculate all rendering data.
         this.renderData = this._calculateRenderData();
+        this.connectionPoints = this._calculateConnectionPoints();
         this.occupiedArea = this.calculateOccupiedArea();
+    }
+
+    /**
+     * Calculates all connection points and their absolute coordinates.
+     * This is called once by the constructor.
+     * @returns An array of ConnectionPoint objects.
+     */
+    private _calculateConnectionPoints(): ConnectionPoint[] {
+        const points: ConnectionPoint[] = [];
+        const {
+            px, py, rectWidthPx, rectYOffset, portSpacingPx,
+            leftPortsStartY, rightPortsStartY
+        } = this.renderData;
+
+        // Calculate left port coordinates
+        this.ports.left.forEach((port, index) => {
+            const portY = leftPortsStartY + index * portSpacingPx;
+            const finalX = px;
+            const finalY = py + rectYOffset + portY;
+            points.push(new ConnectionPoint(port.id, finalX, finalY));
+        });
+
+        // Calculate right port coordinates
+        this.ports.right.forEach((port, index) => {
+            const portY = rightPortsStartY + index * portSpacingPx;
+            const finalX = px + rectWidthPx;
+            const finalY = py + rectYOffset + portY;
+            points.push(new ConnectionPoint(port.id, finalX, finalY));
+        });
+
+        return points;
     }
 
     /**

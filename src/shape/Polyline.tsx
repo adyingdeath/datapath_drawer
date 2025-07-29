@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shape, type ShapeOptions, type Grid } from './Shape';
+import { Shape, type ShapeOptions, type Grid, ConnectionPoint } from './Shape';
 
 export interface Point {
     x: number;
@@ -31,6 +31,7 @@ export class Polyline extends Shape {
     public readonly endBitWidth?: number;
     public readonly strokeWidth: number;
     public readonly fontSize: number;
+    public readonly connectionPoints: ConnectionPoint[];
     public readonly occupiedArea: Grid[];
 
     constructor(options: PolylineOptions) {
@@ -45,7 +46,29 @@ export class Polyline extends Shape {
         this.strokeWidth = options.strokeWidth ?? 2;
         this.fontSize = options.fontSize ?? 10;
 
+        this.connectionPoints = this._calculateConnectionPoints();
         this.occupiedArea = this.calculateOccupiedArea();
+    }
+
+    /**
+     * Creates ConnectionPoint objects for the start and end of the polyline.
+     * This is called once by the constructor.
+     * @returns An array of ConnectionPoint objects.
+     */
+    private _calculateConnectionPoints(): ConnectionPoint[] {
+        const points: ConnectionPoint[] = [];
+
+        if (this.points.length > 0) {
+            const start = this.points[0];
+            points.push(new ConnectionPoint('start', start.x, start.y));
+        }
+
+        if (this.points.length > 1) {
+            const end = this.points[this.points.length - 1];
+            points.push(new ConnectionPoint('end', end.x, end.y));
+        }
+        
+        return points;
     }
     
     /**

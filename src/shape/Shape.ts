@@ -8,6 +8,20 @@ export interface Grid {
 }
 
 /**
+ * Represents a connectable point on a shape with pre-calculated, absolute pixel coordinates.
+ * This is a simple value object.
+ */
+export class ConnectionPoint {
+    public readonly id: string;
+    public readonly pos: { x: number, y: number };
+
+    constructor(id: string, x: number, y: number) {
+        this.id = id;
+        this.pos = { x, y };
+    }
+}
+
+/**
  * Defines the options required for constructing a Shape.
  */
 export interface ShapeOptions {
@@ -52,7 +66,14 @@ export abstract class Shape {
 
     public readonly gridSize: number;
 
+    /**
+     * A list of all connection points for this shape.
+     * These are calculated once in the constructor of the subclass.
+     */
+    public abstract connectionPoints: ConnectionPoint[];
+    
     public abstract occupiedArea: Grid[];
+
 
     /**
      * @param options The initialization options for the shape.
@@ -69,6 +90,15 @@ export abstract class Shape {
 
         // Set the ID, generating a random one if not provided.
         this.id = options.id ?? `shape-${crypto.randomUUID()}`;
+    }
+
+    /**
+     * Finds a specific connection point by its ID from the pre-calculated list.
+     * @param pointId The unique identifier of the connection point.
+     * @returns The ConnectionPoint object, or undefined if not found.
+     */
+    public findConnectionPoint(pointId: string): ConnectionPoint | undefined {
+        return this.connectionPoints.find(p => p.id === pointId);
     }
 
     /**
