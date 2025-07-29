@@ -1,3 +1,4 @@
+import { Area } from "./Area";
 import { AStarPathfinder } from "./AStarPathFinder";
 import type { ConnectionPoint, Grid, Shape } from "./shape/Shape";
 
@@ -9,7 +10,7 @@ export class Scene {
     private bottom = 0;
 
     private shapes: Shape[] = [];
-    private occupiedArea: Grid[] = [];
+    public occupiedArea: Area = new Area();
 
     public constructor(gridSize: number) {
         this.gridSize = gridSize;
@@ -25,11 +26,7 @@ export class Scene {
         if (shape.x + size.width - 1 > this.right) this.right = shape.x + size.width - 1;
         if (shape.y + size.height - 1 > this.bottom) this.bottom = shape.y + size.height - 1;
 
-        // Update scene's occupied area
-        if (shape.occupiedArea && shape.occupiedArea.length > 0) {
-            const allGrids = [...this.occupiedArea, ...shape.occupiedArea];
-            this.occupiedArea = this.mergeGrids(allGrids);
-        }
+        this.occupiedArea = Area.union(this.occupiedArea, shape.occupiedArea);
     }
     
     /**
@@ -139,7 +136,7 @@ export class Scene {
 
         console.log(startPoint, endPoint)
         
-        const astar = new AStarPathfinder(this.occupiedArea, this.gridSize);
+        const astar = new AStarPathfinder(this.occupiedArea);
         const path = astar.findPath(startPoint, endPoint);
 
         if (path) {

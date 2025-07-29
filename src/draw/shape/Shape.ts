@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Area } from '../Area';
 
 export interface Grid {
     x: number;
@@ -78,7 +79,7 @@ export abstract class Shape {
      */
     public abstract connectionPoints: ConnectionPoint[];
     
-    public abstract occupiedArea: Grid[];
+    public abstract occupiedArea: Area;
 
 
     /**
@@ -172,38 +173,5 @@ export abstract class Shape {
      */
     protected toPixelCenter(gridUnit: number): number {
         return (gridUnit * this.gridSize) + (this.gridSize / 2);
-    }
-
-
-    /**
-     * Checks if the specified coordinate is occupied by this shape.
-     * @param x The x-coordinate to check
-     * @param y The y-coordinate to check
-     * @returns true if the coordinate is within any of the occupied areas
-     */
-    protected isOccupied(x: number, y: number): boolean {
-        if (!this.occupiedArea) {
-            return false;
-        }
-
-        for (const grid of this.occupiedArea) {
-            // Check if it's a single cell (no dx/dy)
-            if (grid.dx === undefined || grid.dy === undefined) {
-                if (grid.x === x && grid.y === y) {
-                    return true;
-                }
-            }
-            // Check if it's within a rectangular area
-            else {
-                if (x >= grid.x &&
-                    x < grid.x + grid.dx &&
-                    y >= grid.y &&
-                    y < grid.y + grid.dy) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 }

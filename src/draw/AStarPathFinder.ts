@@ -1,6 +1,8 @@
+import type { Area } from './Area';
+
 /**
  * @interface Point
- * Defines a 2D pixel coordinate.
+ * Defines a 2D coordinate on the GRID.
  */
 interface Point {
     x: number;
@@ -8,28 +10,15 @@ interface Point {
 }
 
 /**
- * @interface Grid
- * Defines a rectangular area in GRID coordinates. This will be converted to pixels.
- * x, y: Top-left corner of the rectangle in the grid.
- * dx, dy: Width and height of the rectangle in grid cells. Defaults to 1.
- */
-export interface Grid {
-    x: number;
-    y: number;
-    dx?: number;
-    dy?: number;
-}
-
-/**
  * @class AStarNode
- * Represents a node (a single pixel) in the A* search.
+ * Represents a node (a single grid cell) in the A* search.
  */
 class AStarNode {
     public x: number;
     public y: number;
-    public g: number;
-    public h: number;
-    public f: number;
+    public g: number; // Cost from start to current node
+    public h: number; // Heuristic cost from current node to end
+    public f: number; // Total cost (g + h)
     public parent: AStarNode | null;
 
     constructor(x: number, y: number, parent: AStarNode | null = null) {
@@ -44,40 +33,38 @@ class AStarNode {
 
 /**
  * @class AStarPathfinder
- * A class to find the shortest, straightest path between two PIXEL points.
+ * A class to find the shortest, straightest path between two GRID points.
+ * The pathfinding algorithm operates on a grid, not on pixels.
  */
 export class AStarPathfinder {
-    private occupiedPixels: Set<string>;
-    private readonly gridSize: number;
+    private readonly occupiedArea: Area;
 
     /**
-     * Initializes the pathfinder. It converts grid-based obstacles into a pixel-based lookup set.
-     * @param obstacles - An array of Grid objects representing impassable areas.
-     * @param gridSize - The size of one grid cell in pixels, used to interpret the obstacles.
+     * Initializes the pathfinder with the map's obstacle layout.
+     * @param occupiedArea - An `Area` object representing all impassable regions on the grid.
      */
-    public constructor(obstacles: Grid[], gridSize: number) {
-        this.occupiedPixels = new Set<string>();
-        this.gridSize = gridSize;
-        this.initializeOccupiedPixels(obstacles);
+    public constructor(occupiedArea: Area) {
+        this.occupiedArea = occupiedArea;
     }
 
     /**
-     * Finds the shortest path between a start and end point, running on a pixel-by-pixel basis.
-     * @param start - The starting point {x, y} in pixel coordinates.
-     * @param end - The ending point {x, y} in pixel coordinates.
-     * @param turnPenalty - The additional cost for making a turn. A higher value makes the path straighter.
-     * @returns An array of points (in pixel coordinates) representing the corners of the path, or null if no path is found.
+     * Finds the shortest path between a start and end point on the grid.
+     * @param start - The starting point {x, y} in GRID coordinates.
+     * @param end - The ending point {x, y} in GRID coordinates.
+     * @param turnPenalty - The additional cost for making a turn. A higher value encourages straighter paths.
+     *                    Since the base cost per step is 1, a penalty of 2-5 is usually effective.
+     * @returns An array of points (in GRID coordinates) representing the corners of the path, or null if no path is found.
      */
-    public findPath(start: Point, end: Point, turnPenalty: number = 20): Point[] | null {
-        // --- A* algorithm now runs directly on pixel coordinates ---
+    public findPath(start: Point, end: Point, turnPenalty: number = 2): Point[] | null {
         const startNode = new AStarNode(start.x, start.y);
         const endNode = new AStarNode(end.x, end.y);
 
         const openList: AStarNode[] = [];
         const closedSet = new Set<string>();
 
-        if (this.isOccupied(start.x, start.y) || this.isOccupied(end.x, end.y)) {
-            return null; // Start or end point is inside an obstacle.
+        // Check if start or end points are inside an obstacle.
+        if (this.occupiedArea.isOccupied(start.x, start.y) || this.occupiedArea.isOccupied(end.x, end.y)) {
+            return null; 
         }
 
         startNode.h = this.getHeuristic(startNode, endNode);
@@ -85,6 +72,7 @@ export class AStarPathfinder {
         openList.push(startNode);
 
         while (openList.length > 0) {
+            // Find the node with the lowest F score in the open list.
             let lowestIndex = 0;
             for (let i = 1; i < openList.length; i++) {
                 if (openList[i].f < openList[lowestIndex].f) {
@@ -93,28 +81,31 @@ export class AStarPathfinder {
             }
             const currentNode = openList[lowestIndex];
 
-            // Path found
+            // Path has been found.
             if (currentNode.x === endNode.x && currentNode.y === endNode.y) {
                 const fullPath = this.reconstructPath(currentNode);
                 return this.simplifyPath(fullPath);
             }
 
+            // Move current node from open to closed list.
             openList.splice(lowestIndex, 1);
             closedSet.add(`${currentNode.x},${currentNode.y}`);
 
             for (const neighbor of this.getNeighbors(currentNode)) {
                 const neighborId = `${neighbor.x},${neighbor.y}`;
 
-                if (closedSet.has(neighborId) || this.isOccupied(neighbor.x, neighbor.y)) {
-                    continue;
+                if (closedSet.has(neighborId) || this.occupiedArea.isOccupied(neighbor.x, neighbor.y)) {
+                    continue; // Skip if neighbor is already evaluated or is an obstacle.
                 }
 
+                // Calculate cost to reach this neighbor.
                 let currentTurnPenalty = 0;
                 if (currentNode.parent) {
                     const prevDx = currentNode.x - currentNode.parent.x;
                     const prevDy = currentNode.y - currentNode.parent.y;
                     const currentDx = neighbor.x - currentNode.x;
                     const currentDy = neighbor.y - currentNode.y;
+                    // Add penalty if direction changes.
                     if (prevDx !== currentDx || prevDy !== currentDy) {
                         currentTurnPenalty = turnPenalty;
                     }
@@ -124,12 +115,14 @@ export class AStarPathfinder {
                 const existingNode = openList.find(node => node.x === neighbor.x && node.y === neighbor.y);
 
                 if (existingNode) {
+                    // If we found a better path to this existing node, update it.
                     if (tentativeG < existingNode.g) {
                         existingNode.g = tentativeG;
                         existingNode.f = existingNode.g + existingNode.h;
                         existingNode.parent = currentNode;
                     }
                 } else {
+                    // This is a new node, so calculate its scores and add to open list.
                     neighbor.g = tentativeG;
                     neighbor.h = this.getHeuristic(neighbor, endNode);
                     neighbor.f = neighbor.g + neighbor.h;
@@ -138,48 +131,29 @@ export class AStarPathfinder {
             }
         }
 
-        return null; // No path found
+        return null; // No path found.
     }
     
     /**
-     * Populates the set of occupied PIXELS by "rasterizing" the grid-based obstacles.
+     * Gets the valid, non-diagonal neighbors of a grid node.
      */
-    private initializeOccupiedPixels(obstacles: Grid[]): void {
-        for (const grid of obstacles) {
-            const startX = grid.x * this.gridSize;
-            const startY = grid.y * this.gridSize;
-            const pixelWidth = (grid.dx ?? 1) * this.gridSize;
-            const pixelHeight = (grid.dy ?? 1) * this.gridSize;
-
-            for (let px = startX; px < startX + pixelWidth; px++) {
-                for (let py = startY; py < startY + pixelHeight; py++) {
-                    this.occupiedPixels.add(`${px},${py}`);
-                }
-            }
-        }
-    }
-
-    /**
-     * Checks if a given pixel coordinate is occupied.
-     */
-    private isOccupied(x: number, y: number): boolean {
-        return this.occupiedPixels.has(`${x},${y}`);
-    }
-
     private getNeighbors(node: AStarNode): AStarNode[] {
         return [
-            new AStarNode(node.x, node.y - 1, node),
-            new AStarNode(node.x, node.y + 1, node),
-            new AStarNode(node.x - 1, node.y, node),
-            new AStarNode(node.x + 1, node.y, node)
+            new AStarNode(node.x, node.y - 1, node), // North
+            new AStarNode(node.x, node.y + 1, node), // South
+            new AStarNode(node.x - 1, node.y, node), // West
+            new AStarNode(node.x + 1, node.y, node)  // East
         ];
     }
     
+    /**
+     * Calculates the heuristic (Manhattan distance) between two points.
+     */
     private getHeuristic = (a: Point, b: Point): number => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
     /**
-     * Reconstructs the full path by tracing back from the end node.
-     * @returns The full path from start to end, including every pixel.
+     * Reconstructs the full path by tracing back from the end node using parent pointers.
+     * @returns The full path from start to end, cell by cell.
      */
     private reconstructPath(endNode: AStarNode): Point[] {
         const path: Point[] = [];
@@ -192,13 +166,13 @@ export class AStarPathfinder {
     }
 
     /**
-     * Simplifies a path by removing intermediate points on straight lines.
-     * @param path - The full path array, with every pixel.
+     * Simplifies a grid path by removing intermediate points on straight line segments.
+     * @param path - The full, cell-by-cell grid path.
      * @returns A new path array containing only the start, end, and corner points.
      */
     private simplifyPath(path: Point[]): Point[] {
         if (path.length < 3) {
-            return path; // Cannot simplify a path with 0, 1, or 2 points.
+            return path;
         }
 
         const simplifiedPath: Point[] = [path[0]]; // Always include the start point.
@@ -208,13 +182,13 @@ export class AStarPathfinder {
             const current = path[i];
             const next = path[i + 1];
 
-            // Calculate direction vectors
+            // Calculate direction vectors between grid cells.
             const dir1x = current.x - prev.x;
             const dir1y = current.y - prev.y;
             const dir2x = next.x - current.x;
             const dir2y = next.y - current.y;
 
-            // If the direction changes, the current point is a corner.
+            // If the direction changes, the current point is a corner and should be kept.
             if (dir1x !== dir2x || dir1y !== dir2y) {
                 simplifiedPath.push(current);
             }

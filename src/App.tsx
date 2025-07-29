@@ -62,6 +62,7 @@ function App() {
 
   useEffect(() => {
     scene.current.addShape(datapath);
+    console.log(scene.current.occupiedArea.isOccupied(9, 5));
     setPoints(scene.current.link("reg-file.rs1_addr", "reg-file.rs2_addr") ?? []);
   }, []);
 
@@ -74,8 +75,8 @@ function App() {
         <Board width={4000} height={3000}>
           {new Array(40).fill(0).map((_, index) => (
             <>
-            <line x1={0} y1={15*index} x2={15*80} y2={15*index} stroke="#CCC" strokeWidth={1}></line>
-            <line x1={15*index} x2={15*index} y1={0} y2={15*80} stroke="#CCC" strokeWidth={1}></line>
+              <line x1={0} y1={15 * index} x2={15 * 80} y2={15 * index} stroke="#CCC" strokeWidth={1}></line>
+              <line x1={15 * index} x2={15 * index} y1={0} y2={15 * 80} stroke="#CCC" strokeWidth={1}></line>
             </>
           ))}
           {datapath.toSvgElement()}
@@ -122,14 +123,29 @@ function App() {
           {/* line2.toSvgElement() */}
           {points.map((p) => (
             <rect
-              x={p.x - 1}
-              y={p.y - 1}
+              x={p.x * 15 + 7.5 - 1}
+              y={p.y * 15 + 7.5 - 1}
               width={2}
               height={2}
               fill="#00FF00"
               stroke="#00FF00"
             />
           ))}
+          {Array.from({length: 40}).map((_, x) => {
+            return Array.from({length: 40}).map((_, y) => {
+              return (
+                scene.current.occupiedArea.isOccupied(x, y) ?
+                  <rect
+                    x={x * 15}
+                    y={y * 15}
+                    width={15}
+                    height={15}
+                    fill="#00F2"
+                    stroke="#00F2"
+                  /> : <></>
+              );
+            })
+          }).flat()}
         </Board>
       </div>
     </div>

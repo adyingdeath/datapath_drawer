@@ -1,5 +1,6 @@
 import React from 'react';
 import { ConnectionPoint, Shape, type Grid, type ShapeOptions } from './Shape';
+import { Area } from '../Area';
 
 export interface Port {
     id: string;
@@ -53,7 +54,7 @@ export class DataPathElement extends Shape {
     public readonly fontFamily: string;
     public readonly fillColor: string;
     public readonly connectionPoints: ConnectionPoint[];
-    public readonly occupiedArea: Grid[];
+    public readonly occupiedArea: Area;
 
     // Pre-calculated grid and rendering data.
     private readonly renderData: {
@@ -82,7 +83,10 @@ export class DataPathElement extends Shape {
 
         this.renderData = this._calculateRenderData();
         this.connectionPoints = this._calculateConnectionPoints();
-        this.occupiedArea = this.calculateOccupiedArea();
+        this.occupiedArea = new Area(this.calculateOccupiedArea());
+
+        // Remove the grids those ports are in from occupied area
+        this.occupiedArea.subtract(this.connectionPoints.map((point) => ({ x: point.x, y: point.y})));
     }
     
     /**

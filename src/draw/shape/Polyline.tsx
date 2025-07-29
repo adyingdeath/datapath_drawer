@@ -1,5 +1,6 @@
 import React from 'react';
 import { Shape, type ShapeOptions, type Grid, ConnectionPoint } from './Shape';
+import { Area } from '../Area';
 
 export interface Point {
     x: number;
@@ -31,7 +32,7 @@ export class Polyline extends Shape {
     public readonly strokeWidth: number;
     public readonly fontSize: number;
     public readonly connectionPoints: ConnectionPoint[];
-    public readonly occupiedArea: Grid[];
+    public readonly occupiedArea: Area;
 
     constructor(options: PolylineOptions) {
         // Polyline's own (x,y) is not used for positioning, it's defined by its points.
@@ -47,7 +48,7 @@ export class Polyline extends Shape {
         this.fontSize = options.fontSize ?? 10;
 
         this.connectionPoints = this._calculateConnectionPoints();
-        this.occupiedArea = this.calculateOccupiedArea();
+        this.occupiedArea = new Area(this.calculateOccupiedArea());
     }
 
     /**
