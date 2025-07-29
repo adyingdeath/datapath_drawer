@@ -1,6 +1,6 @@
 import Board from './Board'
-import { DataPathElement } from './shape/DataPathElement'
-import { Polyline } from './shape/Polyline';
+import { DataPathElement } from './draw/shape/DataPathElement'
+import { Polyline } from './draw/shape/Polyline';
 
 function App() {
   const datapath = new DataPathElement({
