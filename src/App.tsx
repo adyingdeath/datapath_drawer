@@ -5,8 +5,8 @@ import { Polyline } from './shape/Polyline';
 function App() {
   const datapath = new DataPathElement({
     gridSize: 15,
-    x: 4,
-    y: 3,
+    x: 8,
+    y: 6,
     id: 'reg-file',
     color: '#000',
     fillColor: '#fff',
@@ -37,8 +37,8 @@ function App() {
         x: datapath.getPortConnectionPoint("rs1_addr").x,
         y: datapath.getPortConnectionPoint("rs1_addr").y,
       },
-      { x: datapath.getPortConnectionPoint("rs1_addr").x - 50, y: datapath.getPortConnectionPoint("rs1_addr").y },
-      { x: datapath.getPortConnectionPoint("rs2_addr").x - 50, y: datapath.getPortConnectionPoint("rs2_addr").y },
+      { x: datapath.getPortConnectionPoint("rs1_addr").x - 100, y: datapath.getPortConnectionPoint("rs1_addr").y },
+      { x: datapath.getPortConnectionPoint("rs2_addr").x - 100, y: datapath.getPortConnectionPoint("rs2_addr").y },
       {
         x: datapath.getPortConnectionPoint("rs2_addr").x,
         y: datapath.getPortConnectionPoint("rs2_addr").y,

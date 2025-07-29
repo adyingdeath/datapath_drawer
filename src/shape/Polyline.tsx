@@ -31,6 +31,7 @@ export class Polyline extends Shape {
     public readonly endBitWidth?: number;
     public readonly strokeWidth: number;
     public readonly fontSize: number;
+    public readonly occupiedArea: Grid[];
 
     constructor(options: PolylineOptions) {
         super({ ...options, x: 0, y: 0 });
@@ -43,6 +44,8 @@ export class Polyline extends Shape {
         this.endBitWidth = options.endBitWidth;
         this.strokeWidth = options.strokeWidth ?? 2;
         this.fontSize = options.fontSize ?? 10;
+
+        this.occupiedArea = this.calculateOccupiedArea();
     }
     
     /**
@@ -109,7 +112,7 @@ export class Polyline extends Shape {
     private _renderBitWidthAnnotation(p1: Point, p2: Point, bitWidth: number): React.ReactElement {
         // --- MODIFICATION IS HERE ---
         const OFFSET_FROM_ENDPOINT = 20; // How far from p1 to place the annotation center
-        const SLASH_HALF_LENGTH = 7;     // The length of the slash from the center point
+        const SLASH_HALF_LENGTH = 5;     // The length of the slash from the center point
         const TEXT_PERPENDICULAR_OFFSET = 8; // How far "up" from the line to place the text
 
         const dx = p2.x - p1.x;
@@ -139,7 +142,7 @@ export class Polyline extends Shape {
                 <line 
                     x1="0" y1={-SLASH_HALF_LENGTH} 
                     x2="0" y2={SLASH_HALF_LENGTH} 
-                    strokeWidth="1.5"
+                    strokeWidth="1"
                     transform="rotate(-45)"
                 />
                 {/* The bit width text. It is positioned perpendicularly "above" the line.

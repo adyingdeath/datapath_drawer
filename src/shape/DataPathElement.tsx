@@ -56,6 +56,7 @@ export class DataPathElement extends Shape {
     public readonly fontSize: number;
     public readonly fontFamily: string;
     public readonly fillColor: string;
+    public readonly occupiedArea: Grid[];
 
     // Pre-calculated rendering data, stored for efficiency.
     private readonly renderData: {
@@ -89,6 +90,7 @@ export class DataPathElement extends Shape {
 
         // Pre-calculate all rendering data.
         this.renderData = this._calculateRenderData();
+        this.occupiedArea = this.calculateOccupiedArea();
     }
 
     /**

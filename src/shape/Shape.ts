@@ -52,7 +52,7 @@ export abstract class Shape {
 
     public readonly gridSize: number;
 
-    public readonly occupiedArea: Grid[];
+    public abstract occupiedArea: Grid[];
 
     /**
      * @param options The initialization options for the shape.
@@ -69,8 +69,6 @@ export abstract class Shape {
 
         // Set the ID, generating a random one if not provided.
         this.id = options.id ?? `shape-${crypto.randomUUID()}`;
-
-        this.occupiedArea = this.calculateOccupiedArea();
     }
 
     /**
@@ -90,6 +88,37 @@ export abstract class Shape {
      * Note: (x,y) always represents the top-left corner of the occupied area.
      */
     public abstract calculateOccupiedArea(): Grid[];
+
+    /**
+     * Calculates the total width and height of the shape based on its occupied area.
+     * The width is the distance from the leftmost edge to the rightmost edge of all grids.
+     * The height is the distance from the topmost edge to the bottommost edge of all grids.
+     * @returns An object containing the total width and height.
+     */
+    public calculateSize(): { width: number; height: number } {
+        const occupiedArea = this.calculateOccupiedArea();
+
+        if (!occupiedArea || occupiedArea.length === 0) {
+            return { width: 0, height: 0 };
+        }
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        for (const grid of occupiedArea) {
+            minX = Math.min(minX, grid.x);
+            minY = Math.min(minY, grid.y);
+            maxX = Math.max(maxX, grid.x + (grid.dx || 1));
+            maxY = Math.max(maxY, grid.y + (grid.dy || 1));
+        }
+
+        const width = maxX - minX + 1;
+        const height = maxY - minY + 1;
+
+        return { width, height };
+    }
 
     /**
      * A helper method to convert grid units to pixel values.
